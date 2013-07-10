@@ -30,8 +30,7 @@ var fs = require('fs');
 
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
-var URL_DEFAULT = "http://powerful-inlet-2408.herokuapp.com/";
-var DOWNLOAD_HTMLFILE_DEFAULT = "index-downloaded.html"
+var DOWNLOAD_HTMLFILE_DEFAULT = "index-down.html"
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -67,31 +66,44 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
-var buildfn = function(htmlfile) {
+var buildfn = function(htmlfile, checks) {
     var response2console = function(result, response) {
         if (result instanceof Error) {
             console.error('Error: ' + util.format(response.message));
-        } else {            
+        } else {         
             fs.writeFileSync(htmlfile, result);          
+            assertFileExists(htmlfile);
+            checkFile(htmlfile, checks);
+
         }
     };
     return response2console;
 };
 
-var downloadFile = function(url) {
-var response2console = buildfn(dlhtmlfile);
-rest.get(url).on('complete', response2console);
+var downloadFile = function(url,checks) {
+    var response2console = buildfn(DOWNLOAD_HTMLFILE_DEFAULT, checks);
+    rest.get(url).on('complete', response2console);
 }
+
+var checkFile = function(htmlfile, checks) {
+    var checkJson = checkHtmlFile(htmlfile, checks);
+    var outJson = JSON.stringify(checkJson, null, 4);
+    console.log(outJson);
+} 
 
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-		.option('-u, --url <url_file>', 'URL to index.html', clone(downloadFile), URL_DEFAULT)
+		.option('-u, --url <url_file>', 'URL to index.html')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+
+    if(program.url) {
+        downloadFile(program.url, program.checks);
+    }else if(program.file) {
+        checkFile(program.file, program.checks);
+    }
+
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
